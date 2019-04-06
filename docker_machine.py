@@ -91,7 +91,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             display.debug('docker_machine inventory: querying available machines..')
             self.nodes = self._run_command('ls', '-q').splitlines()
             for self.node in self.nodes:
-                display.debug('docker_machine inventory: inspecting machine {1}'.format(self.node))
+                display.debug('docker_machine inventory: inspecting machine {}'.format(self.node))
                 self.node_attrs = json.loads(self._run_command('inspect', self.node))
 
                 id = self.node_attrs['Driver']['MachineName']
@@ -108,7 +108,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 self.inventory.set_variable(id, 'ansible_ssh_private_key_file', self.node_attrs['Driver']['SSHKeyPath'])
 
                 # pass '--shell=bash' to workaround 'Error: Unknown shell'
-                display.debug('docker_machine inventory: querying env for machine {1}'.format(self.node))
+                display.debug('docker_machine inventory: querying env for machine {}'.format(self.node))
                 env_out = self._run_command('env', '--shell=bash', id)
 
                 # example output of docker-machine env
@@ -120,20 +120,20 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 #   # eval $(docker-machine env --shell=bash routinator)
 
                 for env_var_name in ['DOCKER_TLS_VERIFY', 'DOCKER_HOST', 'DOCKER_CERT_PATH', 'DOCKER_MACHINE_NAME']:
-                    env_var_value = re.search('{1}="([^"]+)"'.format(env_var_name), env_out).group(1)
-                    self.inventory.set_variable(id, 'dm_{1}'.format(env_var_name), env_var_value)
+                    env_var_value = re.search('{}="([^"]+)"'.format(env_var_name), env_out).group(1)
+                    self.inventory.set_variable(id, 'dm_{}'.format(env_var_name), env_var_value)
 
                 # Capture any tags
                 split_tags = self.get_option('split_tags')
                 split_separator = self.get_option('split_separator')
                 tags = self.node_attrs['Driver']['Tags']
-                display.debug('docker_machine inventory: parsing tags for machine {1} with tags {2}'.format(self.node, tags))
+                display.debug('docker_machine inventory: parsing tags for machine {} with tags {}'.format(self.node, tags))
                 for kv_pair in tags.split(','):
                     if split_tags and split_separator in kv_pair:
                         k, v = kv_pair.split(split_separator)
-                        self.inventory.set_variable(id, 'dm_tag_{1}'.format(k), v)
+                        self.inventory.set_variable(id, 'dm_tag_{}'.format(k), v)
                     else:
-                        self.inventory.set_variable(id, 'dm_tag_{1}'.format(kv_pair))
+                        self.inventory.set_variable(id, 'dm_tag_{}'.format(kv_pair))
 
                 if self.get_option('verbose_output'):
                     self.inventory.set_variable(id, 'docker_machine_node_attributes', self.node_attrs)
@@ -143,20 +143,20 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
 
                 # Composed variables
                 compose = self.get_option('compose')
-                display.debug('docker_machine inventory: setting composite vars for machine {1} with compose {2}'.format(self.node, compose))
+                display.debug('docker_machine inventory: setting composite vars for machine {} with compose {}'.format(self.node, compose))
                 self._set_composite_vars(compose, self.node_attrs, id, strict=strict)
 
                 # Complex groups based on jinja2 conditionals, hosts that meet the conditional are added to group
                 groups = self.get_option('groups')
-                display.debug('docker_machine inventory: adding host to composed groups for machine {1} with groups {2}'.format(self.node, groups))
+                display.debug('docker_machine inventory: adding host to composed groups for machine {} with groups {}'.format(self.node, groups))
                 self._add_host_to_composed_groups(groups, self.node_attrs, id, strict=strict)
 
                 # Create groups based on variable values and add the corresponding hosts to it
                 keyed_groups = self.get_option('keyed_groups')
-                display.debug('docker_machine inventory: adding host to composed groups for machine {1} with keyed_groups {2}'.format(self.node, keyed_groups))
+                display.debug('docker_machine inventory: adding host to composed groups for machine {} with keyed_groups {}'.format(self.node, keyed_groups))
                 self._add_host_to_keyed_groups(keyed_groups, self.node_attrs, id, strict=strict)
 
-                display.debug('docker_machine inventory: added machine {1}'.format(self.inventory.get_host(id)))
+                display.debug('docker_machine inventory: added machine {}'.format(self.inventory.get_host(id)))
 
         except Exception as e:
             raise AnsibleError('Unable to fetch hosts from Docker machine, this was the original exception: %s' %
@@ -171,5 +171,5 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
     def parse(self, inventory, loader, path, cache=True):
         super(InventoryModule, self).parse(inventory, loader, path, cache)
         config = self._read_config_data(path)
-        display.debug('docker_machine inventory: config: {1}'.format(config))
+        display.debug('docker_machine inventory: config: {}'.format(config))
         self._populate()
