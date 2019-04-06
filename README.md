@@ -41,4 +41,134 @@ To find out what the plugin has discovered do:
 $ ansible-inventory -i ${ANSIBLE_INVENTORY_PLUGINS}/docker_machine.yml --graph --vars
 ```
 
+## Documentation
+
+To read the full plugin docs you can use the `ansible-doc` command:
+
+```
+$ ansible-doc -t inventory docker_machine
+```
+
+E.g. at the time of writing on my local Ansible 2.7.10 installation this produces:
+
+```
+> INVENTORY    (/opt/nlnetlabs/gantry/ansible/dmaip/docker_machine.py)
+
+        Get inventory hosts from Docker Machine. Uses a YAML configuration file that ends with docker_machine.(yml|yaml).
+
+OPTIONS (= is mandatory):
+
+- cache
+        Toggle to enable/disable the caching of the inventory's source data, requires a cache plugin setup to work.
+        [Default: False]
+        set_via:
+          env:
+          - name: ANSIBLE_INVENTORY_CACHE
+          ini:
+          - key: cache
+            section: inventory
+        
+        type: boolean
+
+- cache_connection
+        Cache connection data or path, read cache plugin documentation for specifics.
+        [Default: (null)]
+        set_via:
+          env:
+          - name: ANSIBLE_INVENTORY_CACHE_CONNECTION
+          ini:
+          - key: cache_connection
+            section: inventory
+        
+
+- cache_plugin
+        Cache plugin to use for the inventory's source data.
+        [Default: (null)]
+        set_via:
+          env:
+          - name: ANSIBLE_INVENTORY_CACHE_PLUGIN
+          ini:
+          - key: cache_plugin
+            section: inventory
+        
+
+- cache_timeout
+        Cache duration in seconds
+        [Default: 3600]
+        set_via:
+          env:
+          - name: ANSIBLE_INVENTORY_CACHE_TIMEOUT
+          ini:
+          - key: cache_timeout
+            section: inventory
+        
+        type: integer
+
+- compose
+        create vars from jinja2 expressions
+        [Default: {}]
+        type: dictionary
+
+- groups
+        add hosts to group based on Jinja2 conditionals
+        [Default: {}]
+        type: dictionary
+
+- keyed_groups
+        add hosts to group based on the values of a variable
+        [Default: []]
+        type: list
+
+= plugin
+        token that ensures this is a source file for the 'docker_machine' plugin.
+        (Choices: docker_machine)
+
+- split_separator
+        for keyed_groups when splitting tags this is the separator to split the tag value on.
+        [Default: :]
+        type: str
+
+- split_tags
+        for keyed_groups add two variables as if the tag were actually a key value pair separated by a colon, instead of just a single value.
+        [Default: False]
+        type: bool
+
+- strict
+        If true make invalid entries a fatal error, otherwise skip and continue
+        Since it is possible to use facts in the expressions they might not always be available and we ignore those errors by default.
+        [Default: False]
+        type: boolean
+
+- verbose_output
+        Toggle to (not) include all available nodes metadata (e.g. Image, Region, Size, HostOptions, SwarmOptions, EngineOptions)
+        [Default: True]
+        type: bool
+
+
+REQUIREMENTS:  Docker Machine
+
+NAME: docker_machine
+PLUGIN_TYPE: inventory
+
+EXAMPLES:
+
+# Minimal example
+plugin: docker_machine
+
+# Example using constructed features to create groups
+# keyed_groups may be used to create custom groups
+strict: False
+keyed_groups:
+  - prefix: tag
+    key: 'dm_tags'
+
+# Example using tag splitting where the tag is like 'dm_tag_gantry_component:routinator'
+strict: False
+split_tags: True
+split_separator: ":"
+keyed_groups:
+  - prefix: gantry_component
+    key: 'dm_tag_gantry_component'
+```
+
 END
