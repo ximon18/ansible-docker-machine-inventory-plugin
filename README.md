@@ -16,6 +16,8 @@ It also makes available the DOCKER_xxx environment variables output by `docker-m
 
 Like the Docker Swarm and AWS EC2 plugins it supports `keyed_groups` and other `constructable` ways of dynamically defining Ansible host groups.
 
+If `verbose_output` is enabled it also exposes the entire Docker Machine ```inspect``` output as an ansible inventory host variable called `docker_machine_node_attributes` (matching the naming style used by the Docker Swarm inventory plugin).
+
 ## Requirements
 
 Docker Machine must be [installed](https://docs.docker.com/machine/install-machine/) on the Ansible controller.
