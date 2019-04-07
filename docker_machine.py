@@ -10,21 +10,21 @@ DOCUMENTATION = '''
     plugin_type: inventory
     short_description: Docker machine inventory source
     requirements:
-        - Docker Machine
+        - L(Docker Machine,https://docs.docker.com/machine/)
     extends_documentation_fragment:
         - inventory_cache
         - constructed
     description:
         - Get inventory hosts from Docker Machine.
         - Uses a YAML configuration file that ends with docker_machine.(yml|yaml).
-        - The plugin returns an 'all' group of nodes and one group per driver (e.g. digitalocean).
-        - The plugin sets standard host variables ansible_host, ansible_port, ansible_user and ansible_ssh_private_key.
-        - THe plugin also sets standard host variable ansible_ssh_common_args to '-o StrictHostKeyChecking=no'.
-        - THe plugin also stores the Docker Machine 'env' variables in dm_ prefixed host variables.
+        - The plugin returns an I(all) group of nodes and one group per driver (e.g. digitalocean).
+        - The plugin sets standard host variables I(ansible_host), I(ansible_port), I(ansible_user) and I(ansible_ssh_private_key).
+        - The plugin also sets standard host variable I(ansible_ssh_common_args) to '-o StrictHostKeyChecking=no'.
+        - The plugin also stores the Docker Machine 'env' variables in I(dm_) prefixed host variables.
 
     options:
         plugin:
-          description: token that ensures this is a source file for the 'docker_machine' plugin.
+          description: token that ensures this is a source file for the C(docker_machine) plugin.
           required: True
           choices: ['docker_machine']
         verbose_output:
@@ -41,7 +41,6 @@ DOCUMENTATION = '''
           required: False
           type: str
           default: ":"
-        
 '''
 
 EXAMPLES = '''
@@ -68,13 +67,11 @@ from ansible.errors import AnsibleError
 from ansible.module_utils._text import to_native
 from ansible.module_utils._text import to_text
 from ansible.plugins.inventory import BaseInventoryPlugin, Constructable, Cacheable
-from ansible.utils.display import Display
 
 import json
 import re
 import subprocess
 
-display = Display()
 
 class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
     ''' Host inventory parser for ansible using Docker machine as source. '''
@@ -88,10 +85,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         self.inventory.add_group('all')
 
         try:
-            display.debug('docker_machine inventory: querying available machines..')
             self.nodes = self._run_command('ls', '-q').splitlines()
             for self.node in self.nodes:
-                display.debug('docker_machine inventory: inspecting machine {}'.format(self.node))
                 self.node_attrs = json.loads(self._run_command('inspect', self.node))
 
                 id = self.node_attrs['Driver']['MachineName']
@@ -107,8 +102,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 self.inventory.set_variable(id, 'ansible_ssh_common_args', '-o StrictHostKeyChecking=no')
                 self.inventory.set_variable(id, 'ansible_ssh_private_key_file', self.node_attrs['Driver']['SSHKeyPath'])
 
-                # pass '--shell=bash' to workaround 'Error: Unknown shell'
-                display.debug('docker_machine inventory: querying env for machine {}'.format(self.node))
+                # pass '--shell=bash' to workaround 'Error: Unknown shell
                 env_out = self._run_command('env', '--shell=bash', id)
 
                 # example output of docker-machine env
@@ -120,20 +114,19 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 #   # eval $(docker-machine env --shell=bash routinator)
 
                 for env_var_name in ['DOCKER_TLS_VERIFY', 'DOCKER_HOST', 'DOCKER_CERT_PATH', 'DOCKER_MACHINE_NAME']:
-                    env_var_value = re.search('{}="([^"]+)"'.format(env_var_name), env_out).group(1)
-                    self.inventory.set_variable(id, 'dm_{}'.format(env_var_name), env_var_value)
+                    env_var_value = re.search('{0}="([^"]+)"'.format(env_var_name), env_out).group(1)
+                    self.inventory.set_variable(id, 'dm_{0}'.format(env_var_name), env_var_value)
 
                 # Capture any tags
                 split_tags = self.get_option('split_tags')
                 split_separator = self.get_option('split_separator')
                 tags = self.node_attrs['Driver']['Tags']
-                display.debug('docker_machine inventory: parsing tags for machine {} with tags {}'.format(self.node, tags))
                 for kv_pair in tags.split(','):
                     if split_tags and split_separator in kv_pair:
                         k, v = kv_pair.split(split_separator)
-                        self.inventory.set_variable(id, 'dm_tag_{}'.format(k), v)
+                        self.inventory.set_variable(id, 'dm_tag_{0}'.format(k), v)
                     else:
-                        self.inventory.set_variable(id, 'dm_tag_{}'.format(kv_pair))
+                        self.inventory.set_variable(id, 'dm_tag_{0}'.format(kv_pair))
 
                 if self.get_option('verbose_output'):
                     self.inventory.set_variable(id, 'docker_machine_node_attributes', self.node_attrs)
@@ -142,21 +135,13 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 strict = self.get_option('strict')
 
                 # Composed variables
-                compose = self.get_option('compose')
-                display.debug('docker_machine inventory: setting composite vars for machine {} with compose {}'.format(self.node, compose))
-                self._set_composite_vars(compose, self.node_attrs, id, strict=strict)
+                self._set_composite_vars(self.get_option('compose'), self.node_attrs, id, strict=strict)
 
                 # Complex groups based on jinja2 conditionals, hosts that meet the conditional are added to group
-                groups = self.get_option('groups')
-                display.debug('docker_machine inventory: adding host to composed groups for machine {} with groups {}'.format(self.node, groups))
-                self._add_host_to_composed_groups(groups, self.node_attrs, id, strict=strict)
+                self._add_host_to_composed_groups(self.get_option('groups'), self.node_attrs, id, strict=strict)
 
                 # Create groups based on variable values and add the corresponding hosts to it
-                keyed_groups = self.get_option('keyed_groups')
-                display.debug('docker_machine inventory: adding host to composed groups for machine {} with keyed_groups {}'.format(self.node, keyed_groups))
-                self._add_host_to_keyed_groups(keyed_groups, self.node_attrs, id, strict=strict)
-
-                display.debug('docker_machine inventory: added machine {}'.format(self.inventory.get_host(id)))
+                self._add_host_to_keyed_groups(self.get_option('keyed_groups'), self.node_attrs, id, strict=strict)
 
         except Exception as e:
             raise AnsibleError('Unable to fetch hosts from Docker machine, this was the original exception: %s' %
@@ -171,5 +156,4 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
     def parse(self, inventory, loader, path, cache=True):
         super(InventoryModule, self).parse(inventory, loader, path, cache)
         config = self._read_config_data(path)
-        display.debug('docker_machine inventory: config: {}'.format(config))
         self._populate()
