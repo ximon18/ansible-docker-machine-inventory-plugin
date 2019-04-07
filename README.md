@@ -1,6 +1,6 @@
 # Docker Machine dynamic inventory plugin for Ansible
 
-A [dynamic inventory plugin](https://docs.ansible.com/ansible/latest/plugins/inventory.html) for Ansible (tested with 2.7.10 and Python 3.6.7 on Ubuntu Linux 18.04 LTS).
+A [dynamic inventory plugin](https://docs.ansible.com/ansible/latest/plugins/inventory.html) for Ansible. Tested with Ansible 2.7.10 and Python 3.6.7 on Ubuntu Linux 18.04 LTS with Digital Ocean Droplets created by Docker Machine.
 
 ## Inspiration
 
@@ -12,7 +12,7 @@ While there are other similar solutions out there, I did not find an existing Do
 
 This plugin teaches Ansible about which Docker Machine machines exist and how to connect to them via SSH so that the Ansible controller can execute commands on the remote machine.
 
-It also makes available the DOCKER_xxx environment variables output by `docker-machine env <machine-name>` as Ansible host variables, prefixed with `dm_`. These are intended to be used set Ansible or environment variables such that Docker commands (e.g. docker ps, docker-compose up) will be executed against the Docker daemon running on the remote machine and not the local Docker daemon.
+It also makes available the DOCKER_xxx environment variables output by `docker-machine env <machine-name>` as Ansible host variables, prefixed with `dm_`. These are intended to be used to set Ansible or environment variables such that Docker commands (e.g. docker ps, docker-compose up) will be executed against the Docker daemon running on the remote machine and not the local Docker daemon.
 
 Like the Docker Swarm and AWS EC2 plugins it supports `keyed_groups` and other `constructable` ways of dynamically defining Ansible host groups.
 
@@ -33,7 +33,7 @@ E.g.
 $ export ANSIBLE_INVENTORY_ENABLED=docker_machine
 $ export ANSIBLE_INVENTORY_PLUGINS=/tmp/ansible-docker-machine-inventory-plugin
 $ git clone https://github.com/ximon18/ansible-docker-machine-inventory-plugin.git ${ANSIBLE_INVENTORY_PLUGINS}
-$ vi ${ANSIBLE_INVENTORY_PLUGINS}/docker_machine.env
+$ vi ${ANSIBLE_INVENTORY_PLUGINS}/docker_machine.yml
 $ ansible -i ${ANSIBLE_INVENTORY_PLUGINS}/docker_machine.yml -m ping all
 ```
 
