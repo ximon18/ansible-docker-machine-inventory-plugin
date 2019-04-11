@@ -8,6 +8,7 @@ __metaclass__ = type
 DOCUMENTATION = '''
     name: docker_machine
     plugin_type: inventory
+    author: Ximon Eighteen (@ximon18)
     short_description: Docker Machine inventory source
     requirements:
         - L(Docker Machine,https://docs.docker.com/machine/)
@@ -37,14 +38,6 @@ DOCUMENTATION = '''
             description: when true, include all available nodes metadata (e.g. Image, Region, Size) as a JSON object.
             type: bool
             default: yes
-        split_tags:
-            description: for keyed_groups add two variables as if the tag were actually a key value pair separated by a colon, instead of just a single value.
-            type: bool
-            default: no
-        split_separator:
-            description: for keyed_groups when splitting tags this is the separator to split the tag value on.
-            type: str
-            default: ":"
 '''
 
 EXAMPLES = '''
@@ -74,27 +67,6 @@ keyed_groups:
   - prefix: tag
     key: 'dm_tags'
 
-# Example using tag splitting where the Docker Machine was created with a tag containing a ':' in the value.
-# When using multiple tags this is perhaps more useful than 'dm_tags' as it will create a separate variable
-# per key:value pair encoded in the tag value, e.g.
-#   $ docker-machine create --driver digitalocean ... --digitalocean-tags 'mycolon:separatedtagvalue,myother:tagvalue' mymachine
-#   $ docker-machine inspect mymachine --format '{{ .Driver.Tags }}'
-#   mycolon:separatedtagvalue,myother:tagvalue
-#   $ ansible-inventory -i ./path/to/docker-machine.yml --host=mymachine
-#   {
-#     ...
-#     "dm_tags": "mycolon:separatedtagvalue,myother:Tag",
-#     "dm_tag_mycolon": "separatedtagvalue",
-#     "dm_tag_myother": "tagvalue",
-#     ...
-#   }
-strict: no
-split_tags: yes
-split_separator: ":"
-keyed_groups:
-  - prefix: gantry_component
-    key: 'dm_tag_gantry_component'
-
 # Example using compose to override the default SSH behaviour of asking the user to accept the remote host key
 compose:
   ansible_ssh_common_args: '"-o StrictHostKeyChecking=accept-new"'
@@ -103,6 +75,7 @@ compose:
 from ansible.errors import AnsibleError
 from ansible.module_utils._text import to_native
 from ansible.module_utils._text import to_text
+from ansible.module_utils.common.process import get_bin_path
 from ansible.plugins.inventory import BaseInventoryPlugin, Constructable, Cacheable
 from ansible.utils.display import Display
 
@@ -118,17 +91,19 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
 
     NAME = 'docker_machine'
 
+    DOCKER_MACHINE_PATH = get_bin_path('docker-machine')
+
     def _run_command(self, args):
-        command = ['docker-machine']
+        command = [self.DOCKER_MACHINE_PATH]
         command.extend(args)
         display.debug('Executing command {0}'.format(command))
         try:
             result = subprocess.check_output(command)
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
             display.warning('Exception {0} caught while executing command {1}, this was the original exception: {2}'.format(type(e).__name__, command, e))
             raise e
 
-        return result.decode('utf-8').strip()
+        return to_text(result).strip()
 
     def _get_docker_daemon_variables(self, id):
         '''
@@ -137,9 +112,9 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         '''
         try:
             env_lines = self._run_command(['env', '--shell=sh', id]).splitlines()
-        except Exception:
+        except subprocess.CalledProcessError:
             # This can happen when the machine is created but provisioning is incomplete
-            return None
+            return []
 
         # example output of docker-machine env --shell=sh:
         #   export DOCKER_TLS_VERIFY="1"
@@ -170,32 +145,18 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
 
         try:
             ls_lines = self._run_command(ls_command)
-        except Exception:
-            return None
+        except subprocess.CalledProcessError:
+            return []
 
         return ls_lines.splitlines()
 
     def _inspect_docker_machine_host(self, node):
         try:
             inspect_lines = self._run_command(['inspect', self.node])
-        except Exception:
+        except subprocess.CalledProcessError:
             return None
 
         return json.loads(inspect_lines)
-
-    def _set_tag_variables(self, id):
-        tags = self.node_attrs['Driver'].get('Tags') or ''
-        self.inventory.set_variable(id, 'dm_tags', tags)
-
-        if tags:
-            split_tags = self.get_option('split_tags')
-            split_separator = self.get_option('split_separator')
-
-            kv_pairs = [kv_pair.strip() for kv_pair in tags.split(',') if kv_pair.strip()]
-            for kv_pair in kv_pairs:
-                if split_tags and split_separator in kv_pair:
-                    k, v = kv_pair.split(split_separator)
-                    self.inventory.set_variable(id, 'dm_tag_{0}'.format(k), v)
 
     def _should_skip_host(self, id, env_var_tuples):
         if not env_var_tuples:
@@ -232,7 +193,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 self.inventory.set_variable(id, 'ansible_ssh_private_key_file', self.node_attrs['Driver']['SSHKeyPath'])
 
                 # set variables based on Docker Machine tags
-                self._set_tag_variables(id)
+                tags = self.node_attrs['Driver'].get('Tags') or ''
+                self.inventory.set_variable(id, 'dm_tags', tags)
 
                 # set variables based on Docker Machine env variables
                 for kv in env_var_tuples:
@@ -255,15 +217,13 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
 
         except Exception as e:
             raise AnsibleError('Unable to fetch hosts from Docker Machine, this was the original exception: %s' %
-                               to_native(e))
+                               to_native(e), orig_exc=e)
 
     def verify_file(self, path):
         """Return the possibility of a file being consumable by this plugin."""
-        if super(InventoryModule, self).verify_file(path):
-            if path.endswith(('docker_machine.yml', 'docker_machine.yaml')):
-                return True
-        display.debug("docker_machine inventory filename must end with 'docker_machine.yml' or 'docker_machine.yaml'")
-        return False
+        return (
+            super(InventoryModule, self).verify_file(path) and
+            path.endswith((self.NAME + '.yaml', self.NAME + '.yml')))
 
     def parse(self, inventory, loader, path, cache=True):
         super(InventoryModule, self).parse(inventory, loader, path, cache)
