@@ -54,9 +54,11 @@ $ ansible-doc -t inventory docker_machine
 E.g. at the time of writing on my local Ansible 2.7.10 installation this produces:
 
 ```
-> INVENTORY    (/opt/nlnetlabs/gantry/ansible/dmaip/docker_machine.py)
+> INVENTORY    (/root/.ansible/plugins/inventory/docker_machine.py)
 
-        Get inventory hosts from Docker Machine. Uses a YAML configuration file that ends with docker_machine.(yml|yaml).
+        Get inventory hosts from Docker Machine. Uses a YAML configuration file that ends with docker_machine.(yml|yaml). The plugin sets standard host variables
+        `ansible_host', `ansible_port', `ansible_user' and `ansible_ssh_private_key'. The plugin stores the Docker Machine 'env' output variables in `dm_' prefixed host
+        variables.
 
 OPTIONS (= is mandatory):
 
@@ -111,6 +113,11 @@ OPTIONS (= is mandatory):
         [Default: {}]
         type: dictionary
 
+- daemon_required
+        when true, hosts for which Docker Machine cannot output Docker daemon connection environment variables will be skipped.
+        [Default: True]
+        type: bool
+
 - groups
         add hosts to group based on Jinja2 conditionals
         [Default: {}]
@@ -122,17 +129,12 @@ OPTIONS (= is mandatory):
         type: list
 
 = plugin
-        token that ensures this is a source file for the 'docker_machine' plugin.
+        token that ensures this is a source file for the `docker_machine' plugin.
         (Choices: docker_machine)
 
-- split_separator
-        for keyed_groups when splitting tags this is the separator to split the tag value on.
-        [Default: :]
-        type: str
-
-- split_tags
-        for keyed_groups add two variables as if the tag were actually a key value pair separated by a colon, instead of just a single value.
-        [Default: False]
+- running_required
+        when true, hosts which Docker Machine indicates are in a state other than `running' will be skipped.
+        [Default: True]
         type: bool
 
 - strict
@@ -142,13 +144,14 @@ OPTIONS (= is mandatory):
         type: boolean
 
 - verbose_output
-        Toggle to (not) include all available nodes metadata (e.g. Image, Region, Size, HostOptions, SwarmOptions, EngineOptions)
+        when true, include all available nodes metadata (e.g. Image, Region, Size) as a JSON object.
         [Default: True]
         type: bool
 
 
-REQUIREMENTS:  Docker Machine
+REQUIREMENTS:  L(Docker Machine,https://docs.docker.com/machine/)
 
+AUTHOR: Ximon Eighteen (@ximon18)
 NAME: docker_machine
 PLUGIN_TYPE: inventory
 
@@ -157,20 +160,32 @@ EXAMPLES:
 # Minimal example
 plugin: docker_machine
 
-# Example using constructed features to create groups
-# keyed_groups may be used to create custom groups
-strict: False
+# Example using constructed features to create a group per Docker Machine driver
+# (https://docs.docker.com/machine/drivers/), e.g.:
+#   $ docker-machine create --driver digitalocean ... mymachine
+#   $ ansible-inventory -i ./path/to/docker-machine.yml --host=mymachine
+#   {
+#     ...
+#     "digitalocean": {
+#       "hosts": [
+#           "mymachine"
+#       ]
+#     ...
+#   }
+strict: no
+keyed_groups:
+  - separator: ''
+    key: docker_machine_node_attributes.DriverName
+
+# Example grouping hosts by Digital Machine tag
+strict: no
 keyed_groups:
   - prefix: tag
     key: 'dm_tags'
 
-# Example using tag splitting where the tag is like 'dm_tag_gantry_component:routinator'
-strict: False
-split_tags: True
-split_separator: ":"
-keyed_groups:
-  - prefix: gantry_component
-    key: 'dm_tag_gantry_component'
+# Example using compose to override the default SSH behaviour of asking the user to accept the remote host key
+compose:
+  ansible_ssh_common_args: '"-o StrictHostKeyChecking=accept-new"'
 ```
 
 END
