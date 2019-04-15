@@ -8,6 +8,12 @@ This plugin is based on and is very similar to the Ansible 2.8 [docker_swarm](ht
 
 While there are other similar solutions out there, I did not find an existing Docker Machine dynamic inventory _plugin_, only _scripts_ (e.g. [this](https://gist.github.com/nathanleclaire/1bbf18de7c73f89aa36c)).
 
+## Status
+
+This plugin was created for and is being used by the [NLnet Labs Gantry project](https://github.com/NLnetLabs/gantry).
+
+This plugin has been submitted for inclusion in Ansible core. See [PR #54946](https://github.com/ansible/ansible/pull/54946).
+
 ## Features
 
 This plugin teaches Ansible about which Docker Machine machines exist and how to connect to them via SSH so that the Ansible controller can execute commands on the remote machine.
