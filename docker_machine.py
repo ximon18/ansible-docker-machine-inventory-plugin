@@ -164,6 +164,14 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
 
         return json.loads(inspect_lines)
 
+    def _ip_addr_docker_machine_host(self, node):
+        try:
+            ip_addr = self._run_command(['ip', self.node])
+        except subprocess.CalledProcessError:
+            return None
+
+        return ip_addr
+
     def _should_skip_host(self, id, env_var_tuples):
         if not env_var_tuples:
             if self.get_option('daemon_required'):
@@ -187,13 +195,20 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 env_var_tuples = self._get_docker_daemon_variables(id)
                 if self._should_skip_host(id, env_var_tuples):
                     continue
+                
+                # check for valid ip address from inspect output, else explicitly use ip command to find host ip address
+                if self.node_attrs['Driver']['IPAddress']:
+                    ip_addr = self.node_attrs['Driver']['IPAddress']
+                else:
+                    ip_addr = self._ip_addr_docker_machine_host(self.node)
+
 
                 # add an entry in the inventory for this host
                 self.inventory.add_host(id)
 
                 # set standard Ansible remote host connection settings to details captured from `docker-machine`
                 # see: https://docs.ansible.com/ansible/latest/user_guide/intro_inventory.html
-                self.inventory.set_variable(id, 'ansible_host', self.node_attrs['Driver']['IPAddress'])
+                self.inventory.set_variable(id, 'ansible_host', ip_addr)
                 self.inventory.set_variable(id, 'ansible_port', self.node_attrs['Driver']['SSHPort'])
                 self.inventory.set_variable(id, 'ansible_user', self.node_attrs['Driver']['SSHUser'])
                 self.inventory.set_variable(id, 'ansible_ssh_private_key_file', self.node_attrs['Driver']['SSHKeyPath'])
