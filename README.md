@@ -1,3 +1,11 @@
+# This repository is now obsolete
+
+This plugin was incorported into the official Ansible 2.9 release. See:
+
+- https://docs.ansible.com/ansible/2.9/plugins/inventory/docker_machine.html
+
+----
+
 # Docker Machine dynamic inventory plugin for Ansible
 
 A [dynamic inventory plugin](https://docs.ansible.com/ansible/latest/plugins/inventory.html) for Ansible. Tested with Ansible 2.7.10 and Python 3.6.7 on Ubuntu Linux 18.04 LTS with Digital Ocean Droplets created by Docker Machine.
