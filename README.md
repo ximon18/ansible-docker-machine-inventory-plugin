@@ -4,6 +4,10 @@ This plugin was incorported into the official Ansible 2.9 release. See:
 
 - https://docs.ansible.com/ansible/2.9/plugins/inventory/docker_machine.html
 
+The Ansible version of the source code for this plugin has [moved](https://github.com/ansible-collections/community.general/blob/master/plugins/inventory/docker_machine.py) to the Ansible Commnunity Collection and is available at:
+
+- https://github.com/ansible-collections/community.general/blob/master/plugins/inventory/docker_machine.py
+
 ----
 
 # Docker Machine dynamic inventory plugin for Ansible
