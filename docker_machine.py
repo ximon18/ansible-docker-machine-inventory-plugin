@@ -195,13 +195,12 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 env_var_tuples = self._get_docker_daemon_variables(id)
                 if self._should_skip_host(id, env_var_tuples):
                     continue
-                
+
                 # check for valid ip address from inspect output, else explicitly use ip command to find host ip address
                 if self.node_attrs['Driver']['IPAddress']:
                     ip_addr = self.node_attrs['Driver']['IPAddress']
                 else:
                     ip_addr = self._ip_addr_docker_machine_host(self.node)
-
 
                 # add an entry in the inventory for this host
                 self.inventory.add_host(id)
